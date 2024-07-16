@@ -1,3 +1,4 @@
+# For novels:
 ### 1. Install Python:
 
 - macOS usually comes with Python pre-installed, but it's better to install a newer version.
@@ -38,8 +39,9 @@ Follow the installation wizard, accepting the default options.
 ```python3 xlsx_to_epub.py```
 
 
-## about the xlsx format:
+### About the xlsx format:
 - The script expects the .xlsx file to have the following structure:
+  - The file name is the epub title.
   - The first row should contain the column names.
   - The first column should contain the chapter titles.
   - The second column should contain the text content.
@@ -50,3 +52,33 @@ Follow the installation wizard, accepting the default options.
   | --- | --- |
   | Chapter 1 | This is the content of chapter 1. |
   | Chapter 2 | This is the content of chapter 2. |
+
+# For comics:
+
+### Step 1-3 are the same as for novels.
+
+### 4. Install required libraries:
+
+- In the Terminal, run:
+```pip3 install openpyxl ebooklib requests Pillow```
+
+### 5. Run the script:
+
+- Download the script from the repository.
+- Open the Terminal and navigate to the folder where the script is saved.
+- Save your .xlsx file in the 'comic' folder in the same directory.
+- Run the script by typing:
+```python3 comic_xlsx_to_epub.py```
+
+### About the xlsx format:
+
+- The script expects the .xlsx file to have the following structure:\
+  - The file name is the epub title.
+  - The first row should contain the column names.
+  - The first column should contain the image url.
+
+
+  for example:
+  | Image |
+  | --- |
+  | https://example.com/image1.jpg |
