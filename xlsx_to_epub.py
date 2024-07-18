@@ -3,12 +3,16 @@ import glob
 from openpyxl import load_workbook
 from ebooklib import epub
 
-
-
-
 def create_epub_from_xlsx(xlsx_file):
-    # Extract book title from file name
-    book_title = os.path.splitext(os.path.basename(xlsx_file))[0]
+    # Extract book title and author from file name
+    file_name = os.path.splitext(os.path.basename(xlsx_file))[0]
+    parts = file_name.split('_')
+    if len(parts) >= 2:
+        book_title = '_'.join(parts[:-1])
+        author = parts[-1]
+    else:
+        book_title = file_name
+        author = "Unknown"
 
     # Create a new EPUB book
     book = epub.EpubBook()
@@ -17,6 +21,7 @@ def create_epub_from_xlsx(xlsx_file):
     book.set_identifier(f'id_{book_title}')
     book.set_title(book_title)
     book.set_language('zh-TW')
+    book.add_author(author)  # Add author to metadata
 
     # Load the XLSX file
     wb = load_workbook(xlsx_file)
@@ -65,7 +70,7 @@ def create_epub_from_xlsx(xlsx_file):
     book.spine = ['nav'] + chapters
 
     # Create EPUB file
-    epub_filename = f'{book_title}.epub'
+    epub_filename = f'{book_title} - {author}.epub'
     epub.write_epub(epub_filename, book, {})
 
     print(f"EPUB file '{epub_filename}' has been created successfully.")

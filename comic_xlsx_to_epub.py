@@ -3,12 +3,19 @@ import glob
 from openpyxl import load_workbook
 from ebooklib import epub
 import requests
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 
 def create_comic_epub(xlsx_file):
-    # Extract comic title from file name
-    comic_title = os.path.splitext(os.path.basename(xlsx_file))[0]
+    # Extract comic title and author from file name
+    file_name = os.path.splitext(os.path.basename(xlsx_file))[0]
+    parts = file_name.split('_')
+    if len(parts) >= 2:
+        comic_title = '_'.join(parts[:-1])
+        author = parts[-1]
+    else:
+        comic_title = file_name
+        author = "Unknown"
 
     # Create a new EPUB book
     book = epub.EpubBook()
@@ -16,7 +23,8 @@ def create_comic_epub(xlsx_file):
     # Set metadata
     book.set_identifier(f'id_{comic_title}')
     book.set_title(comic_title)
-    book.set_language('zh')  # Set language to Chinese
+    book.set_language('zh-TW')  # Set language to Chinese
+    book.add_author(author)  # Add author to metadata
 
     # Load the XLSX file
     wb = load_workbook(xlsx_file)
@@ -26,34 +34,47 @@ def create_comic_epub(xlsx_file):
     key = ws[1][0].value
 
     pages = []
-    for row in ws.iter_rows(min_row=2, max_col=1, values_only=True):
+    for index, row in enumerate(ws.iter_rows(min_row=2, max_col=1, values_only=True), start=1):
         if row[0]:  # Ensure the cell is not empty
             image_url = row[0]
 
-            # Download the image
-            response = requests.get(image_url)
-            img = Image.open(BytesIO(response.content))
+            try:
+                # Download the image
+                response = requests.get(image_url, timeout=10)
+                response.raise_for_status()  # Raise an exception for bad status codes
 
-            # Convert image to JPEG if it's not already
-            if img.format != 'JPEG':
-                img_byte_arr = BytesIO()
-                img.convert('RGB').save(img_byte_arr, format='JPEG')
-                img_data = img_byte_arr.getvalue()
-            else:
-                img_data = response.content
+                # Try to open the image
+                try:
+                    img = Image.open(BytesIO(response.content))
+                except UnidentifiedImageError:
+                    print(f"Skipping unidentified image at row {index}: {image_url}")
+                    continue
 
-            # Create a unique filename for the image
-            image_filename = f'image_{len(pages)+1}.jpg'
+                # Convert image to JPEG if it's not already
+                if img.format != 'JPEG':
+                    img_byte_arr = BytesIO()
+                    img.convert('RGB').save(img_byte_arr, format='JPEG')
+                    img_data = img_byte_arr.getvalue()
+                else:
+                    img_data = response.content
 
-            # Add the image to the EPUB
-            epub_image = epub.EpubImage(uid=image_filename, file_name=f'Images/{image_filename}', media_type='image/jpeg', content=img_data)
-            book.add_item(epub_image)
+                # Create a unique filename for the image
+                image_filename = f'image_{len(pages)+1}.jpg'
 
-            # Create a chapter for the image
-            chapter = epub.EpubHtml(title=f'Page {len(pages)+1}', file_name=f'page_{len(pages)+1}.xhtml', lang='zh')
-            chapter.content = f'<img src="Images/{image_filename}" alt="Page {len(pages)+1}"/>'
-            book.add_item(chapter)
-            pages.append(chapter)
+                # Add the image to the EPUB
+                epub_image = epub.EpubImage(uid=image_filename, file_name=f'Images/{image_filename}', media_type='image/jpeg', content=img_data)
+                book.add_item(epub_image)
+
+                # Create a chapter for the image
+                chapter = epub.EpubHtml(title=f'Page {len(pages)+1}', file_name=f'page_{len(pages)+1}.xhtml', lang='zh')
+                chapter.content = f'<img src="Images/{image_filename}" alt="Page {len(pages)+1}"/>'
+                book.add_item(chapter)
+                pages.append(chapter)
+
+            except requests.RequestException as e:
+                print(f"Error downloading image at row {index}: {e}")
+            except Exception as e:
+                print(f"Error processing image at row {index}: {e}")
 
     # Define Table of Contents
     book.toc = pages
